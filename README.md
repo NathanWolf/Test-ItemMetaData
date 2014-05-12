@@ -1,4 +1,4 @@
 Test-ItemGlow
-=============
+================
 
-A test plugin for BUKKIT-4767
+A Plugin for unit-testing the fix for Bukkit-4767
