@@ -1,4 +1,4 @@
-name: Test-ItemGlow
+name: Test-ItemMetaData
 main: com.elmakers.mine.bukkit.plugins.test.TestItemMetaData
 version: 1.0
 website: http://mine.elmakers.com

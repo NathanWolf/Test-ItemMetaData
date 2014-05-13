@@ -5,11 +5,13 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.MemoryConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.enchantment.EnchantItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
@@ -17,11 +19,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.Vector;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
+import java.util.*;
 
 public class TestItemMetaData extends JavaPlugin implements Listener
 {
@@ -42,6 +42,11 @@ public class TestItemMetaData extends JavaPlugin implements Listener
     protected void sendMessage(CommandSender sender, String string)
     {
         sender.sendMessage(CHAT_PREFIX + string);
+    }
+
+    protected void sendError(CommandSender sender, String string)
+    {
+        sender.sendMessage(ERROR_PREFIX + string);
     }
 
     public void onInventoryPush(Player player)
@@ -107,7 +112,7 @@ public class TestItemMetaData extends JavaPlugin implements Listener
     {
         ItemMeta meta = heldItem.getItemMeta();
         if (meta.hasGlowEffect()) {
-            sendMessage(player, ERROR_PREFIX + "This item is already glowing");
+            sendError(player, "This item is already glowing");
             return;
         }
         meta.setGlowEffect(true);
@@ -119,11 +124,11 @@ public class TestItemMetaData extends JavaPlugin implements Listener
     {
         ItemMeta meta = heldItem.getItemMeta();
         if (!meta.hasGlowEffect()) {
-            sendMessage(player, ERROR_PREFIX + "This item isn't glowing");
+            sendError(player, "This item isn't glowing");
             return;
         }
         if (meta.hasEnchants()) {
-            sendMessage(player, ERROR_PREFIX + "Can't un-glow an enchanted item. Use " + ChatColor.WHITE + "/itemunenchant.");
+            sendError(player, "Can't un-glow an enchanted item. Use " + ChatColor.WHITE + "/itemunenchant.");
             return;
         }
         meta.setGlowEffect(false);
@@ -135,7 +140,7 @@ public class TestItemMetaData extends JavaPlugin implements Listener
     {
         ItemMeta meta = heldItem.getItemMeta();
         if (!meta.hasEnchants()) {
-            sendMessage(player, ERROR_PREFIX + "This item has no enchantments.");
+            sendError(player, "This item has no enchantments.");
             return;
         }
         ArrayList<Enchantment> enchants = new ArrayList<Enchantment>(meta.getEnchants().keySet());
@@ -156,16 +161,88 @@ public class TestItemMetaData extends JavaPlugin implements Listener
         } else {
             sendMessage(player, "Has no enchantments");
         }
+        if (meta.hasData()) {
+            ConfigurationSection data = meta.getData();
+            sendMessage(player, "Has data: " + ChatColor.BLUE + data.getKeys(false).size()
+                    + CHAT_PREFIX + " root keys and " + ChatColor.BLUE + data.getKeys(true).size()
+                    + CHAT_PREFIX + " total keys");
+            Collection<String> keys = data.getKeys(false);
+            sendMessage(player, " keys: " + keys);
+            if (data.contains("test_fly")) {
+                ConfigurationSection flyData = data.getConfigurationSection("test_fly");
+                if (flyData == null) {
+                    Object flyObject = data.get("test_fly");
+                    sendError(player, "Something went wrong retrieving our custom fly data: " + flyObject.getClass() + " = " + flyObject);
+                } else {
+                    sendMessage(player, " Hey, look, our custom fly data!");
+                    if (flyData.contains("created")) {
+                        sendMessage(player, "You made this item awesome at " + ChatColor.BLUE + flyData.getString("created"));
+                    } else {
+                        sendError(player, "Missing 'created' key");
+                    }
+                    if (flyData.contains("uses")) {
+                        sendMessage(player, "You have used this item " + ChatColor.BLUE + flyData.getString("uses") + CHAT_PREFIX + " times");
+                    } else {
+                        sendError(player, "Missing 'uses' key");
+                    }
+
+                    if (flyData.contains("speed")) {
+                        sendMessage(player, "Its speed is set to " + ChatColor.BLUE + flyData.getDouble("speed") + CHAT_PREFIX + " ... with no way to change it");
+                    } else {
+                        sendError(player, "Missing 'speed' key");
+                    }
+                }
+            }
+        } else {
+            sendMessage(player, "Has no data");
+        }
+        try {
+            sendMessage(player, "Raw: " + ChatColor.GRAY + meta);
+        } catch (Throwable ex) {
+            sendError(player, "An error occurred serializing item data. See server logs.");
+            ex.printStackTrace();;
+        }
     }
 
     private void onItemFly(Player player, ItemStack heldItem)
     {
-        sendMessage(player, "TODO!");
+        ItemMeta meta = heldItem.getItemMeta();
+        ConfigurationSection data = meta.getData();
+        if (data.contains("test_fly")) {
+            sendError(player, "That item is already a super awesome flying item");
+            return;
+        }
+        ConfigurationSection flyData = data.createSection("test_fly");
+        Date now = new Date();
+        flyData.set("created", now.toString());
+        flyData.set("uses", 0);
+        flyData.set("speed", 2.0);
+        heldItem.setItemMeta(meta);
+
+        if (!heldItem.getItemMeta().getData().contains("test_fly")) {
+            sendError(player, "Setting item data failed");
+        } else {
+            sendMessage(player, "Swing your item to fly");
+            sendMessage(player, "Note that if you don't have flying enabled, you may get kicked");
+            sendMessage(player, "Also note, you'll probably die when you land");
+            sendMessage(player, ChatColor.ITALIC + "But, oh, what fun!");
+        }
     }
 
     private void onItemUnFly(Player player, ItemStack heldItem)
     {
-        sendMessage(player, "TODO!");
+        ItemMeta meta = heldItem.getItemMeta();
+        if (!meta.hasData()) {
+            sendError(player, "That item has no data");
+            return;
+        }
+        ConfigurationSection data = meta.getData();
+        if (!data.contains("test_fly")) {
+            sendError(player, "That item is not a super awesome flying item");
+            return;
+        }
+        data.set("test_fly", null);
+        sendMessage(player, "Your item won't make you fly anymore");
     }
 
     @Override
@@ -223,6 +300,32 @@ public class TestItemMetaData extends JavaPlugin implements Listener
     @EventHandler
 	public void onPlayerInteract(PlayerInteractEvent event)
     {
+        if (event.getAction() != Action.LEFT_CLICK_AIR && event.getAction() != Action.LEFT_CLICK_BLOCK)
+        {
+            return;
+        }
 
+        Player player = event.getPlayer();
+        ItemStack item = player.getItemInHand();
+        if (item == null || !item.hasItemMeta())
+        {
+            return;
+        }
+        ItemMeta meta = item.getItemMeta();
+        if (!meta.hasData())
+        {
+            return;
+        }
+        ConfigurationSection itemData = meta.getData();
+        if (itemData.contains("test_fly"))
+        {
+            ConfigurationSection flyData = itemData.getConfigurationSection("test_fly");
+            Vector targetVelocity = player.getLocation().getDirection().normalize();
+            targetVelocity.setY(targetVelocity.getY() + 0.75);
+            targetVelocity = targetVelocity.normalize().multiply(flyData.getDouble("speed"));
+            player.setVelocity(targetVelocity);
+            flyData.set("uses", flyData.getInt("uses") + 1);
+            item.setItemMeta(meta);
+        }
 	}
 }
