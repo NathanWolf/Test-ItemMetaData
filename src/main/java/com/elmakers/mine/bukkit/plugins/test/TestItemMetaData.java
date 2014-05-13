@@ -161,8 +161,8 @@ public class TestItemMetaData extends JavaPlugin implements Listener
         } else {
             sendMessage(player, "Has no enchantments");
         }
-        if (meta.hasData()) {
-            ConfigurationSection data = meta.getData();
+        if (meta.hasCustomData()) {
+            ConfigurationSection data = meta.getCustomData();
             sendMessage(player, "Has data: " + ChatColor.BLUE + data.getKeys(false).size()
                     + CHAT_PREFIX + " root keys and " + ChatColor.BLUE + data.getKeys(true).size()
                     + CHAT_PREFIX + " total keys");
@@ -207,7 +207,7 @@ public class TestItemMetaData extends JavaPlugin implements Listener
     private void onItemFly(Player player, ItemStack heldItem)
     {
         ItemMeta meta = heldItem.getItemMeta();
-        ConfigurationSection data = meta.getData();
+        ConfigurationSection data = meta.getCustomData();
         if (data.contains("test_fly")) {
             sendError(player, "That item is already a super awesome flying item");
             return;
@@ -219,7 +219,7 @@ public class TestItemMetaData extends JavaPlugin implements Listener
         flyData.set("speed", 2.0);
         heldItem.setItemMeta(meta);
 
-        if (!heldItem.getItemMeta().getData().contains("test_fly")) {
+        if (!heldItem.getItemMeta().getCustomData().contains("test_fly")) {
             sendError(player, "Setting item data failed");
         } else {
             sendMessage(player, "Swing your item to fly");
@@ -232,11 +232,11 @@ public class TestItemMetaData extends JavaPlugin implements Listener
     private void onItemUnFly(Player player, ItemStack heldItem)
     {
         ItemMeta meta = heldItem.getItemMeta();
-        if (!meta.hasData()) {
+        if (!meta.hasCustomData()) {
             sendError(player, "That item has no data");
             return;
         }
-        ConfigurationSection data = meta.getData();
+        ConfigurationSection data = meta.getCustomData();
         if (!data.contains("test_fly")) {
             sendError(player, "That item is not a super awesome flying item");
             return;
@@ -312,11 +312,11 @@ public class TestItemMetaData extends JavaPlugin implements Listener
             return;
         }
         ItemMeta meta = item.getItemMeta();
-        if (!meta.hasData())
+        if (!meta.hasCustomData())
         {
             return;
         }
-        ConfigurationSection itemData = meta.getData();
+        ConfigurationSection itemData = meta.getCustomData();
         if (itemData.contains("test_fly"))
         {
             ConfigurationSection flyData = itemData.getConfigurationSection("test_fly");
