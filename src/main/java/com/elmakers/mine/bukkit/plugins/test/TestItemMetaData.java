@@ -110,6 +110,8 @@ public class TestItemMetaData extends JavaPlugin implements Listener
 
     private void onItemGlow(Player player, ItemStack heldItem)
     {
+        sendMessage(player, "This was moved to a separate change and test");
+        /*
         ItemMeta meta = heldItem.getItemMeta();
         if (meta.hasGlowEffect()) {
             sendError(player, "This item is already glowing");
@@ -118,10 +120,13 @@ public class TestItemMetaData extends JavaPlugin implements Listener
         meta.setGlowEffect(true);
         heldItem.setItemMeta(meta);
         sendMessage(player, "Ooooh, shiny!");
+        */
     }
 
     private void onItemUnGlow(Player player, ItemStack heldItem)
     {
+        sendMessage(player, "This was moved to a separate change and test");
+        /*
         ItemMeta meta = heldItem.getItemMeta();
         if (!meta.hasGlowEffect()) {
             sendError(player, "This item isn't glowing");
@@ -134,6 +139,7 @@ public class TestItemMetaData extends JavaPlugin implements Listener
         meta.setGlowEffect(false);
         heldItem.setItemMeta(meta);
         sendMessage(player, "Awwwww");
+        */
     }
 
     private void onItemUnEnchant(Player player, ItemStack heldItem)
@@ -155,7 +161,7 @@ public class TestItemMetaData extends JavaPlugin implements Listener
     {
         ItemMeta meta = heldItem.getItemMeta();
         sendMessage(player, "Item Type: " + ChatColor.BLUE + heldItem.getType().name());
-        sendMessage(player, "Glowing: " + ChatColor.BLUE + (meta.hasGlowEffect() ? "yes" : "no"));
+        sendMessage(player, "Glowing: " + ChatColor.BLUE + "I dunno!");
         if (meta.hasEnchants()) {
             sendMessage(player, "Has " + ChatColor.BLUE + meta.getEnchants().size() + CHAT_PREFIX + " enchantments");
         } else {
