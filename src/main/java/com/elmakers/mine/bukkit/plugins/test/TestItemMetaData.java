@@ -17,6 +17,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.metadata.MetadataValue;
+import org.bukkit.metadata.PersistentMetadataValue;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
@@ -167,36 +169,37 @@ public class TestItemMetaData extends JavaPlugin implements Listener
         } else {
             sendMessage(player, "Has no enchantments");
         }
-        if (meta.hasCustomData()) {
-            ConfigurationSection data = meta.getCustomData();
-            sendMessage(player, "Has data: " + ChatColor.BLUE + data.getKeys(false).size()
-                    + CHAT_PREFIX + " root keys and " + ChatColor.BLUE + data.getKeys(true).size()
-                    + CHAT_PREFIX + " total keys");
-            Collection<String> keys = data.getKeys(false);
-            sendMessage(player, " keys: " + keys);
-            if (data.contains("test_fly")) {
-                ConfigurationSection flyData = data.getConfigurationSection("test_fly");
-                if (flyData == null) {
-                    Object flyObject = data.get("test_fly");
-                    sendError(player, "Something went wrong retrieving our custom fly data: " + flyObject.getClass() + " = " + flyObject);
-                } else {
-                    sendMessage(player, " Hey, look, our custom fly data!");
-                    if (flyData.contains("created")) {
-                        sendMessage(player, "You made this item awesome at " + ChatColor.BLUE + flyData.getString("created"));
-                    } else {
-                        sendError(player, "Missing 'created' key");
-                    }
-                    if (flyData.contains("uses")) {
-                        sendMessage(player, "You have used this item " + ChatColor.BLUE + flyData.getString("uses") + CHAT_PREFIX + " times");
-                    } else {
-                        sendError(player, "Missing 'uses' key");
-                    }
+        if (meta.hasMetadata("test_fly")) {
 
-                    if (flyData.contains("speed")) {
-                        sendMessage(player, "Its speed is set to " + ChatColor.BLUE + flyData.getDouble("speed") + CHAT_PREFIX + " ... with no way to change it");
-                    } else {
-                        sendError(player, "Missing 'speed' key");
-                    }
+            Collection<MetadataValue> values = meta.getMetadata("test_fly");
+            MetadataValue flyMetadata = null;
+            for (MetadataValue value : values) {
+                if (value.getOwningPlugin() == this) {
+                    flyMetadata = value;
+                    break;
+                }
+            }
+
+            if (flyMetadata == null) {
+                sendError(player, "Found fly data, but it wasn't owned by this plugin");
+            } else {
+                sendMessage(player, " Hey, look, our custom fly data!");
+                Map<String, Object> flyData = (Map<String, Object>)flyMetadata.value();
+                if (flyData.containsKey("created")) {
+                    sendMessage(player, "You made this item awesome at " + ChatColor.BLUE + flyData.get("created"));
+                } else {
+                    sendError(player, "Missing 'created' key");
+                }
+                if (flyData.containsKey("uses")) {
+                    sendMessage(player, "You have used this item " + ChatColor.BLUE + flyData.get("uses") + CHAT_PREFIX + " times");
+                } else {
+                    sendError(player, "Missing 'uses' key");
+                }
+
+                if (flyData.containsKey("speed")) {
+                    sendMessage(player, "Its speed is set to " + ChatColor.BLUE + flyData.get("speed") + CHAT_PREFIX + " ... with no way to change it");
+                } else {
+                    sendError(player, "Missing 'speed' key");
                 }
             }
         } else {
@@ -213,19 +216,19 @@ public class TestItemMetaData extends JavaPlugin implements Listener
     private void onItemFly(Player player, ItemStack heldItem)
     {
         ItemMeta meta = heldItem.getItemMeta();
-        ConfigurationSection data = meta.getCustomData();
-        if (data.contains("test_fly")) {
+        if (meta.hasMetadata("test_fly")) {
             sendError(player, "That item is already a super awesome flying item");
             return;
         }
-        ConfigurationSection flyData = data.createSection("test_fly");
+        Map<String, Object> flyData = new HashMap<String, Object>();
         Date now = new Date();
-        flyData.set("created", now.toString());
-        flyData.set("uses", 0);
-        flyData.set("speed", 2.0);
+        flyData.put("created", now.toString());
+        flyData.put("uses", 0);
+        flyData.put("speed", 2.0);
+        meta.setMetadata("test_fly", new PersistentMetadataValue(this, flyData));
         heldItem.setItemMeta(meta);
 
-        if (!heldItem.getItemMeta().getCustomData().contains("test_fly")) {
+        if (!heldItem.getItemMeta().hasMetadata("test_fly")) {
             sendError(player, "Setting item data failed");
         } else {
             sendMessage(player, "Swing your item to fly");
@@ -237,18 +240,28 @@ public class TestItemMetaData extends JavaPlugin implements Listener
 
     private void onItemUnFly(Player player, ItemStack heldItem)
     {
-        ItemMeta meta = heldItem.getItemMeta();
-        if (!meta.hasCustomData()) {
-            sendError(player, "That item has no data");
+        if (!heldItem.hasMetadata()) {
+            sendError(player, "That item is not special at all!");
             return;
         }
-        ConfigurationSection data = meta.getCustomData();
-        if (!data.contains("test_fly")) {
+        ItemMeta meta = heldItem.getItemMeta();
+
+        if (!meta.hasMetadata("test_fly")) {
             sendError(player, "That item is not a super awesome flying item");
             return;
         }
-        data.set("test_fly", null);
-        sendMessage(player, "Your item won't make you fly anymore");
+        meta.removeMetadata("test_fly", this);
+        heldItem.setItemMeta(meta);
+        if (heldItem.hasMetadata()) {
+            meta = heldItem.getItemMeta();
+            if (meta.hasMetadata("test_fly")) {
+                sendError(player, "Failed to un-fly the item!");
+            } else {
+                sendMessage(player, "Item can no longer fly, but still seems to be special in some way.");
+            }
+        } else {
+            sendMessage(player, "Your item won't make you fly anymore");
+        }
     }
 
     @Override
@@ -313,25 +326,49 @@ public class TestItemMetaData extends JavaPlugin implements Listener
 
         Player player = event.getPlayer();
         ItemStack item = player.getItemInHand();
-        if (item == null || !item.hasItemMeta())
+
+        // Note the pre-check does not unpack ItemMeta
+        if (item == null || !item.hasMetadata())
         {
             return;
         }
         ItemMeta meta = item.getItemMeta();
-        if (!meta.hasCustomData())
+        if (!meta.hasMetadata("test_fly"))
         {
             return;
         }
-        ConfigurationSection itemData = meta.getCustomData();
-        if (itemData.contains("test_fly"))
-        {
-            ConfigurationSection flyData = itemData.getConfigurationSection("test_fly");
-            Vector targetVelocity = player.getLocation().getDirection().normalize();
-            targetVelocity.setY(targetVelocity.getY() + 0.75);
-            targetVelocity = targetVelocity.normalize().multiply(flyData.getDouble("speed"));
-            player.setVelocity(targetVelocity);
-            flyData.set("uses", flyData.getInt("uses") + 1);
-            item.setItemMeta(meta);
+
+        Collection<MetadataValue> values = meta.getMetadata("test_fly");
+        MetadataValue flyMetadata = null;
+        for (MetadataValue value : values) {
+            if (value.getOwningPlugin() == this) {
+                flyMetadata = value;
+                break;
+            }
         }
+
+        if (flyMetadata == null) {
+            sendError(player, "Found fly data, but it wasn't owned by this plugin");
+            return;
+        }
+
+        Map<String, Object> flyData = (Map<String, Object>)flyMetadata.value();
+        Double speed = (Double)flyData.get("speed");
+        if (speed == null) {
+            sendError(player, "Found fly data with an invalid speed. No flying for you!");
+            return;
+        }
+
+        Vector targetVelocity = player.getLocation().getDirection().normalize();
+        targetVelocity.setY(targetVelocity.getY() + 0.75);
+        targetVelocity = targetVelocity.normalize().multiply(speed);
+        player.setVelocity(targetVelocity);
+
+        Integer flyCount = (Integer)flyData.get("uses");
+        flyCount = flyCount == null ? 1 : flyCount + 1;
+        flyData.put("uses", flyCount);
+
+        meta.setMetadata("test_fly", new PersistentMetadataValue(this, flyData));
+        item.setItemMeta(meta);
 	}
 }
