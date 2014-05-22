@@ -240,10 +240,6 @@ public class TestItemMetaData extends JavaPlugin implements Listener
 
     private void onItemUnFly(Player player, ItemStack heldItem)
     {
-        if (!heldItem.hasMetadata()) {
-            sendError(player, "That item is not special at all!");
-            return;
-        }
         ItemMeta meta = heldItem.getItemMeta();
 
         if (!meta.hasMetadata("test_fly")) {
@@ -252,13 +248,9 @@ public class TestItemMetaData extends JavaPlugin implements Listener
         }
         meta.removeMetadata("test_fly", this);
         heldItem.setItemMeta(meta);
-        if (heldItem.hasMetadata()) {
-            meta = heldItem.getItemMeta();
-            if (meta.hasMetadata("test_fly")) {
-                sendError(player, "Failed to un-fly the item!");
-            } else {
-                sendMessage(player, "Item can no longer fly, but still seems to be special in some way.");
-            }
+        meta = heldItem.getItemMeta();
+        if (meta.hasMetadata("test_fly")) {
+            sendError(player, "Failed to un-fly the item!");
         } else {
             sendMessage(player, "Your item won't make you fly anymore");
         }
@@ -328,16 +320,11 @@ public class TestItemMetaData extends JavaPlugin implements Listener
         ItemStack item = player.getItemInHand();
 
         // Note the pre-check does not unpack ItemMeta
-        if (item == null || !item.hasMetadata())
+        if (item == null || !item.hasMetadata("test_fly"))
         {
             return;
         }
         ItemMeta meta = item.getItemMeta();
-        if (!meta.hasMetadata("test_fly"))
-        {
-            return;
-        }
-
         Collection<MetadataValue> values = meta.getMetadata("test_fly");
         MetadataValue flyMetadata = null;
         for (MetadataValue value : values) {
