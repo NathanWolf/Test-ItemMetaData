@@ -155,8 +155,15 @@ public class TestItemMetaData extends JavaPlugin implements Listener
 
     private void onItemCheck(Player player, ItemStack heldItem)
     {
-        ItemMeta meta = heldItem.getItemMeta();
         sendMessage(player, "Item Type: " + ChatColor.BLUE + heldItem.getType().name());
+
+        if (!heldItem.hasItemMeta()) {
+            sendMessage(player, "Has no ItemMeta");
+        } else {
+            sendMessage(player, "Has ItemMeta: ");
+        }
+        ItemMeta meta = heldItem.getItemMeta();
+
         sendMessage(player, "Glowing: " + ChatColor.BLUE + (meta.hasGlowEffect() ? "yes" : "no"));
         if (meta.hasEnchants()) {
             sendMessage(player, "Has " + ChatColor.BLUE + meta.getEnchants().size() + CHAT_PREFIX + " enchantments");
