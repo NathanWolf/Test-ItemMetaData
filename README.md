@@ -1,4 +1,4 @@
-Test-ItemGlow
+Test-ItemMetaData
 ================
 
 A Plugin for unit-testing the fix for Bukkit-4767
